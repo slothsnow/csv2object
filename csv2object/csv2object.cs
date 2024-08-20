@@ -1,10 +1,16 @@
-﻿namespace csv2object
+﻿using System.Reflection;
+using System.Linq;
+using System.ComponentModel;
+
+namespace csv2object
 {
     public class csv2object
     {
         static public List<T> Convert<T>(string csv, char separator)
         {
             var table = ConvertCsvToTable(csv, separator);
+            var objectFields = GetObjectFields(typeof(T));
+            var columnsToObjectFieldName = ConvertColumnsToObjectFieldName(table, objectFields);
             throw new NotImplementedException();
         }
 
@@ -17,6 +23,42 @@
             return csv.Split("\n") // Split the CSV file at the endings to convert easier
                       .Select(record => record.Split(separator).ToList()) // Split the records to get fields
                       .ToList();
+        }
+
+        /// <summary>
+        /// The method is used to get the names of the fields of the objects
+        /// </summary>
+        /// <param name="type">The type of the objects in which the CSV should be converted</param>
+        /// <returns></returns>
+        static private List<string> GetObjectFields(Type type)
+        {
+            return (from field in type.GetFields().ToList()
+                    select field.Name).ToList();
+        }
+
+        /// <summary>
+        /// The method converts the number of columns to the field names of the object. 
+        /// </summary>
+        /// <param name="table">The CSV as table.</param>
+        /// <param name="objectFields">The object field names.</param>
+        /// <returns>A dictionary. Column number -> Object File Name</returns>
+        static private Dictionary<int, string> ConvertColumnsToObjectFieldName(List<List<string>> table, List<string> objectFields)
+        {
+            Dictionary<int, string> columnsToObjectFieldName = new();
+            for (int i = 0; i < table[0].Count; i++)
+            {
+                string nameInCSV = table[0][i].ToLower();
+                string nameInObject;
+                foreach (string objectField in objectFields)
+                {
+                    if (nameInCSV == objectField.ToLower())
+                    {
+                        nameInObject = objectField;
+                    }
+                }
+                columnsToObjectFieldName.Add(i, nameInCSV);
+            }
+            return columnsToObjectFieldName;
         }
     }
 }
