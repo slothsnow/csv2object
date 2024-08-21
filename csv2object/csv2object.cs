@@ -6,12 +6,12 @@ namespace csv2object
 {
     public class csv2object
     {
-        static public List<T> Convert<T>(string csv, char separator)
+        static public List<T> Convert<T> (string csv, char separator) where T : new()
         {
             var table = ConvertCsvToTable(csv, separator);
             var objectFields = GetObjectFields(typeof(T));
             var columnsToObjectFieldName = ConvertColumnsToObjectFieldName(table, objectFields);
-            throw new NotImplementedException();
+            return fillObjects<T>(table, columnsToObjectFieldName);
         }
 
         /// <summary>
@@ -59,6 +59,44 @@ namespace csv2object
                 columnsToObjectFieldName.Add(i, nameInCSV);
             }
             return columnsToObjectFieldName;
+        }
+
+        /// <summary>
+        /// The method sets the value of a field of an object without knowing the type.
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="fieldName"></param>
+        /// <param name="value"></param>
+        static private void SetFieldValue(object obj, string fieldName, object value)
+        {
+            Type type = obj.GetType();
+            FieldInfo? fieldInfo = type.GetField(fieldName); 
+            if(fieldInfo != null)
+            {
+                fieldInfo.SetValue(obj, value);
+            }
+        }
+
+        /// <summary>
+        /// The method fills a list with objects with a table and the "columnsToObjectFieldName".
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="table"></param>
+        /// <param name="columnsToObjectFieldName"></param>
+        /// <returns></returns>
+        static private List<T> fillObjects<T>(List<List<string>> table, Dictionary<int, string> columnsToObjectFieldName) where T : new()
+        {
+            List<T> result = new List<T>();
+            for (int i = 1; i < table.Count; i++)
+            {
+                T obj = new T();
+                for (int j = 0; j < table[i].Count; j++)
+                {
+                    SetFieldValue(obj, columnsToObjectFieldName[j], table[j]);
+                }
+                result.Add(obj);
+            }
+            return result;
         }
     }
 }
