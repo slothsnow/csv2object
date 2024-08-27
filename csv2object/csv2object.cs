@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Linq;
 using System.ComponentModel;
+using System.Reflection.Metadata.Ecma335;
 
 namespace csv2object
 {
@@ -20,7 +21,7 @@ namespace csv2object
         /// <returns>The method returns the plain CSV file as a table. Rows are the records, columns the fields.</returns>
         static private List<List<string>> ConvertCsvToTable(string csv, char separator)
         {
-            return csv.Split("\n") // Split the CSV file at the endings to convert easier
+            return csv.Split('\n') // Split the CSV file at the endings to convert easier
                       .Select(record => record.Split(separator).ToList()) // Split the records to get fields
                       .ToList();
         }
@@ -30,11 +31,17 @@ namespace csv2object
         /// </summary>
         /// <param name="type">The type of the objects in which the CSV should be converted</param>
         /// <returns></returns>
-        static private List<string> GetObjectFields(Type type)
+        private static List<string> GetObjectFields(Type type)
         {
-            return (from field in type.GetFields().ToList()
-                    select field.Name).ToList();
+            var fieldNamesTemp = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Select(field => field.Name).ToList();
+            List<string> result = new List<string>();
+            foreach (var field in fieldNamesTemp)
+            {
+                result.Add(field.Replace("k__BackingField", "").Replace("<", "").Replace(">", ""));
+            }
+            return result;
         }
+
 
         /// <summary>
         /// The method converts the number of columns to the field names of the object. 
@@ -48,15 +55,14 @@ namespace csv2object
             for (int i = 0; i < table[0].Count; i++)
             {
                 string nameInCSV = table[0][i].ToLower();
-                string nameInObject;
                 foreach (string objectField in objectFields)
                 {
                     if (nameInCSV == objectField.ToLower())
                     {
-                        nameInObject = objectField;
+                        columnsToObjectFieldName.Add(i, objectField);
+                        break;
                     }
                 }
-                columnsToObjectFieldName.Add(i, nameInCSV);
             }
             return columnsToObjectFieldName;
         }
@@ -67,14 +73,14 @@ namespace csv2object
         /// <param name="obj"></param>
         /// <param name="fieldName"></param>
         /// <param name="value"></param>
-        static private void SetFieldValue(object obj, string fieldName, object value)
+        static private T SetFieldValue<T>(T obj, string fieldName, object value)
         {
-            Type type = obj.GetType();
-            FieldInfo? fieldInfo = type.GetField(fieldName); 
-            if(fieldInfo != null)
+            var property = obj.GetType().GetProperty(fieldName);
+            if (property != null && property.PropertyType.IsAssignableFrom(value.GetType()))
             {
-                fieldInfo.SetValue(obj, value);
+                property.SetValue(obj, value);
             }
+            return obj;
         }
 
         /// <summary>
@@ -92,7 +98,7 @@ namespace csv2object
                 T obj = new T();
                 for (int j = 0; j < table[i].Count; j++)
                 {
-                    SetFieldValue(obj, columnsToObjectFieldName[j], table[j]);
+                    obj = SetFieldValue(obj, columnsToObjectFieldName[j], table[i][j]);
                 }
                 result.Add(obj);
             }

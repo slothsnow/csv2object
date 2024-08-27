@@ -1,6 +1,6 @@
-namespace test_csv2object
+﻿namespace test_csv2object
 {
-    public class Tests
+    public class test_objectToCSV
     {
         [SetUp]
         public void Setup()
@@ -8,7 +8,7 @@ namespace test_csv2object
         }
 
         [Test]
-        public void Test1()
+        public void nUnitTest()
         {
             Assert.Pass();
         }
